@@ -25,11 +25,13 @@ def lambda_handler(event:, context:)
 end
 
 def query_locations(event, context)
-  # Get user ID
-  user_id = UserHelper.get_user_id(event)
-
   # Parse query parameters
   params = event['queryStringParameters'] || {}
+
+  # Get device ID from query parameter or try to extract from event
+  # For GET requests, deviceId should be in query params
+  device_id = params['deviceId'] || UserHelper.get_device_id(event)
+  puts "Device ID: #{device_id}"
 
   # Determine date range
   if params['days']
@@ -48,7 +50,7 @@ def query_locations(event, context)
   end
 
   # Query DynamoDB
-  locations = fetch_locations(user_id, start_date, end_date)
+  locations = fetch_locations(device_id, start_date, end_date)
 
   # Return results
   ResponseHelper.success({
@@ -70,15 +72,15 @@ rescue StandardError => e
   ResponseHelper.server_error(e)
 end
 
-def fetch_locations(user_id, start_date, end_date)
+def fetch_locations(device_id, start_date, end_date)
   result = dynamodb_client.query({
     table_name: table_name,
-    key_condition_expression: 'userId = :uid AND #ts BETWEEN :start AND :end',
+    key_condition_expression: 'userId = :deviceId AND #ts BETWEEN :start AND :end',
     expression_attribute_names: {
       '#ts' => 'timestamp'
     },
     expression_attribute_values: {
-      ':uid' => user_id,
+      ':deviceId' => device_id,
       ':start' => start_date.iso8601,
       ':end' => end_date.iso8601
     },
