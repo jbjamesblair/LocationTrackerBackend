@@ -1,0 +1,51 @@
+# SAM build artifacts
+.aws-sam/
+samconfig.toml.bak
+
+# Ruby
+*.gem
+*.rbc
+.bundle
+.config
+coverage
+InstalledFiles
+lib/bundler/man
+pkg
+rdoc
+spec/reports
+test/tmp
+test/version_tmp
+tmp
+vendor/bundle
+
+# Environment variables
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# AWS credentials (NEVER commit these!)
+credentials
+config
+*.pem
+*.key
+
+# Logs
+*.log
+
+# Python (if you add Python tools later)
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+*.so
+.pytest_cache/

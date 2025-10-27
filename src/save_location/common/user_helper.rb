@@ -1,30 +1,29 @@
 # frozen_string_literal: true
 
 ##
-# UserHelper - Centralized user identification logic
+# UserHelper - Device identification logic
 #
-# Currently returns a hardcoded user ID, but designed to easily switch
-# to dynamic user identification in the future.
+# Extracts device identifier from request body
+# Each iOS device sends its unique identifierForVendor
 #
-# Future migration options:
+# Migration options for multi-user in the future:
 # 1. API Key mapping: Map API keys to user IDs
 # 2. Request header: Extract from X-User-Id header
-# 3. Request body: Include userId/deviceId in payload
-# 4. AWS Cognito: Extract from authenticated identity
+# 3. AWS Cognito: Extract from authenticated identity
 module UserHelper
-  # Get user ID from the Lambda event
-  # Currently returns hardcoded value, but single point of change for future
+  # Get device ID from the Lambda event
+  # Extracts from request body (sent by iOS app)
   #
   # @param event [Hash] Lambda event object
-  # @return [String] User identifier
+  # @return [String] Device identifier
   def self.get_user_id(event)
-    # Phase 1: Hardcoded single user (CURRENT)
-    ENV['USER_ID'] || 'user-001'
+    # Extract deviceId from request body
+    extract_from_body(event)
+  end
 
-    # Phase 2 (FUTURE): Uncomment one of these approaches:
-    # extract_from_api_key(event)
-    # extract_from_header(event)
-    # extract_from_body(event)
+  # Alias for clarity - this is actually extracting device ID
+  class << self
+    alias get_device_id get_user_id
   end
 
   # FUTURE: Extract user ID from API key
@@ -47,16 +46,16 @@ module UserHelper
     headers['X-User-Id'] || headers['x-user-id'] || 'user-001'
   end
 
-  # FUTURE: Extract user ID from request body
-  # Requires iOS app to send userId/deviceId in payload
+  # Extract device ID from request body
+  # iOS app sends deviceId in payload
   #
   # @param event [Hash] Lambda event object
-  # @return [String] User identifier
+  # @return [String] Device identifier
   def self.extract_from_body(event)
     body = JSON.parse(event['body'] || '{}')
-    body['userId'] || body['deviceId'] || 'user-001'
+    body['deviceId'] || body['userId'] || 'unknown-device'
   rescue JSON::ParserError
-    'user-001'
+    'unknown-device'
   end
 
   # FUTURE: API Key to User mapping

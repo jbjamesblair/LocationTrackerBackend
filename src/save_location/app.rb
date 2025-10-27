@@ -32,16 +32,16 @@ def lambda_handler(event:, context:)
   body = parse_body(event)
   return ResponseHelper.error('Invalid JSON in request body', 400) unless body
 
-  # Get user ID (currently hardcoded, easy to change later)
-  user_id = UserHelper.get_user_id(event)
-  puts "User ID: #{user_id}"
+  # Get device ID from request body
+  device_id = UserHelper.get_device_id(event)
+  puts "Device ID: #{device_id}"
 
   # Validate input
   errors = Validator.validate_location(body)
   return ResponseHelper.validation_error(errors) unless errors.empty?
 
   # Save to DynamoDB
-  location_id = save_location(user_id, body)
+  location_id = save_location(device_id, body)
 
   # Return success response
   ResponseHelper.success({
@@ -74,10 +74,10 @@ end
 ##
 # Save location data to DynamoDB
 #
-# @param user_id [String] User identifier
+# @param device_id [String] Device identifier
 # @param data [Hash] Location data
 # @return [String] Location ID (UUID)
-def save_location(user_id, data)
+def save_location(device_id, data)
   # Generate unique location ID if not provided
   location_id = SecureRandom.uuid
 
@@ -86,7 +86,7 @@ def save_location(user_id, data)
 
   # Prepare DynamoDB item
   item = {
-    'userId' => user_id,
+    'userId' => device_id,  # userId field now stores device identifier
     'timestamp' => data['timestamp'],
     'locationId' => location_id,
     'latitude' => data['latitude'],
