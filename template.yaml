@@ -1,0 +1,174 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Location Tracker Backend - Serverless API for iOS Location Tracking App
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 256
+    Runtime: ruby3.3
+    Environment:
+      Variables:
+        TABLE_NAME: !Ref LocationHistoryTable
+        USER_ID: user-001  # Hardcoded for now, easy to change later
+  Api:
+    Cors:
+      AllowMethods: "'GET,POST,OPTIONS'"
+      AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+      AllowOrigin: "'*'"
+
+Resources:
+  # DynamoDB Table for Location History
+  LocationHistoryTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: LocationHistory
+      BillingMode: PAY_PER_REQUEST  # On-demand pricing
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: S
+        - AttributeName: locationId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH    # Partition key
+        - AttributeName: timestamp
+          KeyType: RANGE   # Sort key
+      GlobalSecondaryIndexes:
+        - IndexName: locationId-index
+          KeySchema:
+            - AttributeName: locationId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      Tags:
+        - Key: Application
+          Value: LocationTracker
+        - Key: Environment
+          Value: Production
+
+  # Lambda Function: Save Location
+  SaveLocationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/save_location/
+      Handler: app.lambda_handler
+      Description: Save location data to DynamoDB
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref LocationHistoryTable
+      Events:
+        SaveLocation:
+          Type: Api
+          Properties:
+            Path: /api/v1/locations
+            Method: POST
+            Auth:
+              ApiKeyRequired: true
+    Metadata:
+      BuildMethod: ruby3.3
+
+  # Lambda Function: Health Check
+  HealthCheckFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/health_check/
+      Handler: app.lambda_handler
+      Description: Health check endpoint
+      Events:
+        HealthCheck:
+          Type: Api
+          Properties:
+            Path: /api/v1/health
+            Method: GET
+    Metadata:
+      BuildMethod: ruby3.3
+
+  # Lambda Function: Query Locations (FUTURE - Currently returns 501)
+  QueryLocationsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/query_locations/
+      Handler: app.lambda_handler
+      Description: Query location history (stub for future implementation)
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref LocationHistoryTable
+      Events:
+        QueryLocations:
+          Type: Api
+          Properties:
+            Path: /api/v1/locations
+            Method: GET
+            Auth:
+              ApiKeyRequired: true
+    Metadata:
+      BuildMethod: ruby3.3
+
+  # API Gateway API Key
+  LocationTrackerApiKey:
+    Type: AWS::ApiGateway::ApiKey
+    DependsOn:
+      - ServerlessRestApiProdStage
+    Properties:
+      Name: LocationTrackerAPIKey
+      Description: API Key for Location Tracker iOS App
+      Enabled: true
+      StageKeys:
+        - RestApiId: !Ref ServerlessRestApi
+          StageName: Prod
+
+  # API Gateway Usage Plan
+  LocationTrackerUsagePlan:
+    Type: AWS::ApiGateway::UsagePlan
+    DependsOn:
+      - ServerlessRestApiProdStage
+    Properties:
+      UsagePlanName: LocationTrackerUsagePlan
+      Description: Usage plan for Location Tracker API
+      ApiStages:
+        - ApiId: !Ref ServerlessRestApi
+          Stage: Prod
+      Quota:
+        Limit: 100000
+        Period: MONTH
+      Throttle:
+        BurstLimit: 200
+        RateLimit: 100
+
+  # Link API Key to Usage Plan
+  LocationTrackerUsagePlanKey:
+    Type: AWS::ApiGateway::UsagePlanKey
+    Properties:
+      KeyId: !Ref LocationTrackerApiKey
+      KeyType: API_KEY
+      UsagePlanId: !Ref LocationTrackerUsagePlan
+
+Outputs:
+  ApiEndpoint:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/api/v1"
+    Export:
+      Name: LocationTrackerApiEndpoint
+
+  ApiKeyId:
+    Description: "API Key ID (use this to get the actual key value)"
+    Value: !Ref LocationTrackerApiKey
+    Export:
+      Name: LocationTrackerApiKeyId
+
+  TableName:
+    Description: "DynamoDB table name"
+    Value: !Ref LocationHistoryTable
+    Export:
+      Name: LocationTrackerTableName
+
+  Region:
+    Description: "AWS Region"
+    Value: !Ref AWS::Region
+    Export:
+      Name: LocationTrackerRegion

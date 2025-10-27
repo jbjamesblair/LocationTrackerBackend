@@ -1,0 +1,38 @@
+{
+  "body": "{\"timestamp\":\"2025-10-26T15:30:00Z\",\"latitude\":37.7749,\"longitude\":-122.4194,\"accuracy\":10.0,\"altitude\":15.0,\"speed\":0.0}",
+  "resource": "/api/v1/locations",
+  "path": "/api/v1/locations",
+  "httpMethod": "POST",
+  "headers": {
+    "Content-Type": "application/json",
+    "X-API-Key": "test-api-key"
+  },
+  "queryStringParameters": null,
+  "pathParameters": null,
+  "stageVariables": null,
+  "requestContext": {
+    "accountId": "123456789012",
+    "apiId": "test-api-id",
+    "protocol": "HTTP/1.1",
+    "httpMethod": "POST",
+    "path": "/api/v1/locations",
+    "stage": "test",
+    "requestId": "test-request-id",
+    "requestTime": "26/Oct/2025:15:30:00 +0000",
+    "requestTimeEpoch": 1729958400000,
+    "identity": {
+      "cognitoIdentityPoolId": null,
+      "accountId": null,
+      "cognitoIdentityId": null,
+      "caller": null,
+      "apiKey": "test-api-key",
+      "sourceIp": "127.0.0.1",
+      "cognitoAuthenticationType": null,
+      "cognitoAuthenticationProvider": null,
+      "userArn": null,
+      "userAgent": "Custom User Agent String",
+      "user": null
+    }
+  },
+  "isBase64Encoded": false
+}
