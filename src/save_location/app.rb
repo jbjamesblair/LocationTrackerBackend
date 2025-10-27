@@ -97,6 +97,12 @@ def save_location(user_id, data)
     'receivedAt' => received_at
   }
 
+  # Add optional geocoding fields if present
+  item['city'] = data['city'] if data['city']
+  item['state'] = data['state'] if data['state']
+  item['country'] = data['country'] if data['country']
+  item['countryCode'] = data['countryCode'] if data['countryCode']
+
   puts "Saving location: #{item}"
 
   # Write to DynamoDB

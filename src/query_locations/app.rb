@@ -9,28 +9,21 @@ require_relative 'common/user_helper'
 require_relative 'common/response_helper'
 
 ##
-# QueryLocations Lambda Handler (STUB FOR FUTURE IMPLEMENTATION)
+# QueryLocations Lambda Handler
 #
-# This endpoint is included in the infrastructure but returns 501 Not Implemented
-# When ready to implement, uncomment the full implementation below
+# Queries location history from DynamoDB for a given date range
 #
 # Expected query parameters:
 #   ?startDate=2025-10-01T00:00:00Z&endDate=2025-10-26T23:59:59Z
 #   OR
-#   ?days=7
+#   ?days=180 (for last 180 days)
 def lambda_handler(event:, context:)
-  puts "Query locations request received (NOT YET IMPLEMENTED)"
+  puts "Query locations request received"
   puts "Event: #{JSON.pretty_generate(event)}"
 
-  # Return 501 Not Implemented for now
-  ResponseHelper.error('Query endpoint not yet implemented. Coming soon!', 501)
-
-  # FUTURE IMPLEMENTATION (uncomment when ready):
-  # query_locations(event, context)
+  query_locations(event, context)
 end
 
-# FUTURE: Full implementation of query functionality
-# Uncomment this method when ready to enable querying
 def query_locations(event, context)
   # Get user ID
   user_id = UserHelper.get_user_id(event)
@@ -77,7 +70,6 @@ rescue StandardError => e
   ResponseHelper.server_error(e)
 end
 
-# FUTURE: Fetch locations from DynamoDB
 def fetch_locations(user_id, start_date, end_date)
   result = dynamodb_client.query({
     table_name: table_name,
@@ -95,7 +87,7 @@ def fetch_locations(user_id, start_date, end_date)
 
   # Convert DynamoDB items to simple hash
   result.items.map do |item|
-    {
+    location = {
       locationId: item['locationId'],
       timestamp: item['timestamp'],
       latitude: item['latitude'].to_f,
@@ -104,6 +96,14 @@ def fetch_locations(user_id, start_date, end_date)
       altitude: item['altitude'].to_f,
       speed: item['speed'].to_f
     }
+
+    # Add optional geocoding fields if present
+    location[:city] = item['city'] if item['city']
+    location[:state] = item['state'] if item['state']
+    location[:country] = item['country'] if item['country']
+    location[:countryCode] = item['countryCode'] if item['countryCode']
+
+    location
   end
 end
 
