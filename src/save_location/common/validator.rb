@@ -48,10 +48,10 @@ module Validator
       errors << 'Invalid accuracy (must be >= 0)' if data['accuracy'] < 0
     end
 
-    # Validate altitude (reasonable range: -500 to 10000 meters)
+    # Validate altitude (reasonable range: -500 to 15000 meters for airplanes)
     if data['altitude'] && data['altitude'].is_a?(Numeric)
-      unless data['altitude'] >= -500 && data['altitude'] <= 10000
-        errors << 'Invalid altitude (must be between -500 and 10000 meters)'
+      unless data['altitude'] >= -500 && data['altitude'] <= 15000
+        errors << 'Invalid altitude (must be between -500 and 15000 meters)'
       end
     end
 
