@@ -33,6 +33,10 @@ def query_locations(event, context)
   device_id = params['deviceId'] || UserHelper.get_device_id(event)
   puts "Device ID: #{device_id}"
 
+  # Check if we should exclude airplane travel
+  exclude_airplanes = params['excludeAirplanes'] == 'true'
+  puts "Exclude airplanes: #{exclude_airplanes}"
+
   # Determine date range
   if params['days']
     # Query last N days
@@ -50,7 +54,7 @@ def query_locations(event, context)
   end
 
   # Query DynamoDB
-  locations = fetch_locations(device_id, start_date, end_date)
+  locations = fetch_locations(device_id, start_date, end_date, exclude_airplanes)
 
   # Return results
   ResponseHelper.success({
@@ -72,8 +76,8 @@ rescue StandardError => e
   ResponseHelper.server_error(e)
 end
 
-def fetch_locations(device_id, start_date, end_date)
-  result = dynamodb_client.query({
+def fetch_locations(device_id, start_date, end_date, exclude_airplanes = false)
+  query_params = {
     table_name: table_name,
     key_condition_expression: 'userId = :deviceId AND #ts BETWEEN :start AND :end',
     expression_attribute_names: {
@@ -85,7 +89,17 @@ def fetch_locations(device_id, start_date, end_date)
       ':end' => end_date.iso8601
     },
     scan_index_forward: false  # Most recent first
-  })
+  }
+
+  # Add filter expression to exclude airplane travel (altitude > 1000m AND speed > 160 km/h = 44.44 m/s)
+  if exclude_airplanes
+    query_params[:filter_expression] = 'NOT (altitude > :maxAltitude AND speed > :maxSpeed)'
+    query_params[:expression_attribute_values][':maxAltitude'] = 1000
+    query_params[:expression_attribute_values][':maxSpeed'] = 44.44
+    puts "Applying airplane filter: altitude <= 1000m OR speed <= 160 km/h"
+  end
+
+  result = dynamodb_client.query(query_params)
 
   # Convert DynamoDB items to simple hash
   result.items.map do |item|
