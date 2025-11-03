@@ -115,7 +115,7 @@ Resources:
     Properties:
       CodeUri: src/send_daily_summary/
       Handler: app.lambda_handler
-      Description: Send daily location summary email (triggered by EventBridge)
+      Description: Send daily location summary email (triggered by EventBridge or API)
       Timeout: 60
       Environment:
         Variables:
@@ -134,6 +134,13 @@ Resources:
             Schedule: cron(0 15 * * ? *)  # 8 AM Pacific Time (15:00 UTC)
             Description: Trigger daily summary email at 8 AM PT
             Enabled: true
+        ManualTrigger:
+          Type: Api
+          Properties:
+            Path: /api/v1/send-summary
+            Method: POST
+            Auth:
+              ApiKeyRequired: true
     Metadata:
       BuildMethod: ruby3.3
 
