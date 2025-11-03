@@ -88,13 +88,13 @@ Resources:
     Metadata:
       BuildMethod: ruby3.3
 
-  # Lambda Function: Query Locations (FUTURE - Currently returns 501)
+  # Lambda Function: Query Locations
   QueryLocationsFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/query_locations/
       Handler: app.lambda_handler
-      Description: Query location history (stub for future implementation)
+      Description: Query location history
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref LocationHistoryTable
@@ -106,6 +106,34 @@ Resources:
             Method: GET
             Auth:
               ApiKeyRequired: true
+    Metadata:
+      BuildMethod: ruby3.3
+
+  # Lambda Function: Send Daily Summary Email
+  SendDailySummaryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/send_daily_summary/
+      Handler: app.lambda_handler
+      Description: Send daily location summary email (triggered by EventBridge)
+      Timeout: 60
+      Environment:
+        Variables:
+          RECIPIENT_EMAIL: james.blair@gmail.com
+          SENDER_EMAIL: james.blair@gmail.com
+          DEVICE_ID: "00FA1AED-B671-4CE3-8E12-BB3227FBEB54"
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref LocationHistoryTable
+        - SESBulkTemplatedCrudPolicy:
+            IdentityName: "*"
+      Events:
+        DailySchedule:
+          Type: Schedule
+          Properties:
+            Schedule: cron(0 15 * * ? *)  # 8 AM Pacific Time (15:00 UTC)
+            Description: Trigger daily summary email at 8 AM PT
+            Enabled: true
     Metadata:
       BuildMethod: ruby3.3
 
