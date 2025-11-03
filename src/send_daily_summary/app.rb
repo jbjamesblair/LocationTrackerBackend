@@ -31,20 +31,20 @@ def send_daily_summary(event, context)
     return error_response('DEVICE_ID not configured', 500)
   end
 
-  # Calculate date range (last 24 hours in Pacific Time)
+  # Calculate date range (last 30 days in Pacific Time)
   pacific_time = Time.now.getlocal('-08:00')  # Pacific Time
   end_time = pacific_time
-  start_time = end_time - (24 * 60 * 60)  # 24 hours ago
+  start_time = end_time - (30 * 24 * 60 * 60)  # 30 days ago
 
   puts "Fetching locations from #{start_time} to #{end_time} (Pacific Time)"
 
-  # Fetch locations for the past 24 hours
+  # Fetch locations for the past 30 days
   locations = fetch_locations(device_id, start_time.utc, end_time.utc)
 
-  puts "Found #{locations.length} locations in the past 24 hours"
+  puts "Found #{locations.length} locations in the past 30 days"
 
-  # Generate summary statistics
-  summary = generate_summary(locations, start_time, end_time)
+  # Generate summary statistics by day
+  summary = generate_monthly_summary(locations, start_time, end_time)
 
   # Generate email HTML
   email_html = EmailTemplate.generate(summary)
@@ -54,7 +54,7 @@ def send_daily_summary(event, context)
   send_email(
     sender: sender_email,
     recipient: recipient_email,
-    subject: "📍 Daily Location Summary - #{pacific_time.strftime('%B %d, %Y')}",
+    subject: "📍 Monthly Location Summary - #{pacific_time.strftime('%B %Y')}",
     html_body: email_html,
     text_body: email_text
   )
@@ -107,30 +107,40 @@ def fetch_locations(device_id, start_time, end_time)
   end
 end
 
-def generate_summary(locations, start_time, end_time)
+def generate_monthly_summary(locations, start_time, end_time)
   # Filter to only geocoded locations
-  geocoded = locations.select { |loc| loc[:country] || loc[:city] }
+  geocoded = locations.select { |loc| loc[:country] || loc[:state] }
 
-  # Group by state/country
-  by_location = geocoded.group_by { |loc| "#{loc[:state] || 'Unknown'}, #{loc[:country] || 'Unknown'}" }
+  # Group by day (in Pacific Time)
+  pacific_tz = '-08:00'
+  by_day = geocoded.group_by do |loc|
+    # Convert to Pacific Time and get just the date
+    loc[:timestamp].getlocal(pacific_tz).to_date
+  end
 
-  # Calculate statistics
-  locations_visited = by_location.map do |location_name, locs|
+  # For each day, get unique states/countries visited
+  daily_summaries = by_day.map do |date, day_locations|
+    # Get unique state/country combinations
+    locations_set = day_locations.map do |loc|
+      if loc[:state] && !loc[:state].empty?
+        "#{loc[:state]}, #{loc[:country]}"
+      else
+        loc[:country]
+      end
+    end.compact.uniq.sort
+
     {
-      name: location_name,
-      visit_count: locs.length,
-      first_seen: locs.map { |l| l[:timestamp] }.min,
-      last_seen: locs.map { |l| l[:timestamp] }.max
+      date: date,
+      locations: locations_set,
+      visit_count: day_locations.length
     }
-  end.sort_by { |l| -l[:visit_count] }
+  end.sort_by { |d| d[:date] }
 
   {
     start_time: start_time,
     end_time: end_time,
     total_locations: locations.length,
-    geocoded_locations: geocoded.length,
-    locations_visited: locations_visited,
-    primary_location: locations_visited.first
+    daily_summaries: daily_summaries
   }
 end
 

@@ -131,8 +131,8 @@ Resources:
         DailySchedule:
           Type: Schedule
           Properties:
-            Schedule: cron(0 15 * * ? *)  # 8 AM Pacific Time (15:00 UTC)
-            Description: Trigger daily summary email at 8 AM PT
+            Schedule: cron(15 8 * * ? *)  # 12:15 AM Pacific Time (08:15 UTC)
+            Description: Trigger daily summary email at 12:15 AM PT
             Enabled: true
         ManualTrigger:
           Type: Api

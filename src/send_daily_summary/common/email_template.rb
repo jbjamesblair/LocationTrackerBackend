@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 ##
-# EmailTemplate module for generating daily summary emails
+# EmailTemplate module for generating monthly location summary emails
 module EmailTemplate
   def self.generate(summary)
     <<~HTML
@@ -9,21 +9,28 @@ module EmailTemplate
       <html>
       <head>
         <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
           body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             line-height: 1.6;
             color: #333;
-            max-width: 600px;
+            max-width: 800px;
             margin: 0 auto;
             padding: 20px;
+            background: #f5f5f5;
+          }
+          .container {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
           }
           .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             padding: 30px;
-            border-radius: 10px;
-            margin-bottom: 30px;
+            text-align: center;
           }
           .header h1 {
             margin: 0 0 10px 0;
@@ -34,18 +41,64 @@ module EmailTemplate
             opacity: 0.9;
             font-size: 16px;
           }
-          .stat-card {
-            background: #f7fafc;
+          .content {
+            padding: 30px;
+          }
+          .calendar {
+            display: grid;
+            gap: 10px;
+            margin-top: 20px;
+          }
+          .day-card {
+            background: #f8f9fa;
             border-left: 4px solid #667eea;
-            padding: 20px;
-            margin-bottom: 20px;
+            padding: 15px;
             border-radius: 5px;
+            transition: all 0.2s;
+          }
+          .day-card:hover {
+            background: #e9ecef;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+          }
+          .day-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+          }
+          .day-date {
+            font-weight: 600;
+            color: #2d3748;
+            font-size: 16px;
+          }
+          .day-count {
+            font-size: 12px;
+            color: #718096;
+            background: #e2e8f0;
+            padding: 2px 8px;
+            border-radius: 12px;
+          }
+          .day-locations {
+            color: #4a5568;
+            font-size: 14px;
+            line-height: 1.8;
+          }
+          .location-item {
+            display: inline-block;
+            margin-right: 8px;
+            margin-bottom: 4px;
+          }
+          .stats {
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
           }
           .stat-number {
             font-size: 36px;
             font-weight: bold;
             color: #667eea;
-            margin: 10px 0;
           }
           .stat-label {
             color: #718096;
@@ -53,57 +106,43 @@ module EmailTemplate
             text-transform: uppercase;
             letter-spacing: 0.5px;
           }
-          .location-list {
-            margin-top: 30px;
-          }
-          .location-item {
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 10px;
-          }
-          .location-name {
-            font-size: 18px;
-            font-weight: 600;
-            color: #2d3748;
-            margin-bottom: 5px;
-          }
-          .location-meta {
-            color: #718096;
-            font-size: 14px;
-          }
           .footer {
-            margin-top: 40px;
+            margin-top: 30px;
             padding-top: 20px;
             border-top: 1px solid #e2e8f0;
             color: #718096;
             font-size: 12px;
             text-align: center;
           }
+          .empty-day {
+            opacity: 0.5;
+            font-style: italic;
+          }
         </style>
       </head>
       <body>
-        <div class="header">
-          <h1>📍 Daily Location Summary</h1>
-          <p>#{summary[:start_time].strftime('%B %d, %Y')}</p>
-        </div>
+        <div class="container">
+          <div class="header">
+            <h1>📍 Monthly Location Summary</h1>
+            <p>#{summary[:end_time].strftime('%B %Y')}</p>
+          </div>
 
-        <div class="stat-card">
-          <div class="stat-label">Total Locations Captured</div>
-          <div class="stat-number">#{summary[:total_locations]}</div>
-        </div>
+          <div class="content">
+            <div class="stats">
+              <div class="stat-number">#{summary[:daily_summaries].length}</div>
+              <div class="stat-label">Days with Location Data</div>
+            </div>
 
-        #{summary[:primary_location] ? primary_location_html(summary[:primary_location]) : ''}
+            <h2 style="color: #2d3748; margin-bottom: 20px;">Daily Location History</h2>
+            <div class="calendar">
+              #{calendar_html(summary[:daily_summaries])}
+            </div>
 
-        <div class="location-list">
-          <h2 style="color: #2d3748; margin-bottom: 20px;">Places Visited</h2>
-          #{locations_html(summary[:locations_visited])}
-        </div>
-
-        <div class="footer">
-          <p>🤖 Generated by Location Tracker</p>
-          <p>Tracking period: #{summary[:start_time].strftime('%I:%M %p')} - #{summary[:end_time].strftime('%I:%M %p PT')}</p>
+            <div class="footer">
+              <p>🤖 Generated by Location Tracker</p>
+              <p>#{summary[:start_time].strftime('%B %d')} - #{summary[:end_time].strftime('%B %d, %Y')}</p>
+            </div>
+          </div>
         </div>
       </body>
       </html>
@@ -112,61 +151,72 @@ module EmailTemplate
 
   def self.generate_text(summary)
     text = <<~TEXT
-      DAILY LOCATION SUMMARY
-      #{summary[:start_time].strftime('%B %d, %Y')}
+      MONTHLY LOCATION SUMMARY
+      #{summary[:end_time].strftime('%B %Y')}
 
-      Total Locations Captured: #{summary[:total_locations]}
+      Days with Location Data: #{summary[:daily_summaries].length}
+
+      Daily Location History:
 
     TEXT
 
-    if summary[:primary_location]
-      text += <<~TEXT
-        Primary Location: #{summary[:primary_location][:name]}
-        Visits: #{summary[:primary_location][:visit_count]}
-
-      TEXT
-    end
-
-    text += "Places Visited:\n\n"
-
-    summary[:locations_visited].each do |location|
-      text += "• #{location[:name]} - #{location[:visit_count]} visits\n"
+    summary[:daily_summaries].reverse.each do |day|
+      text += "\n#{day[:date].strftime('%a, %b %d')} (#{day[:visit_count]} points)\n"
+      if day[:locations].empty?
+        text += "  No location data\n"
+      else
+        day[:locations].each do |location|
+          text += "  • #{location}\n"
+        end
+      end
     end
 
     text += "\n---\n"
     text += "Generated by Location Tracker\n"
-    text += "Tracking period: #{summary[:start_time].strftime('%I:%M %p')} - #{summary[:end_time].strftime('%I:%M %p PT')}\n"
+    text += "#{summary[:start_time].strftime('%B %d')} - #{summary[:end_time].strftime('%B %d, %Y')}\n"
 
     text
   end
 
-  def self.primary_location_html(location)
-    <<~HTML
-      <div class="stat-card" style="border-left-color: #48bb78;">
-        <div class="stat-label">Primary Location</div>
-        <div style="font-size: 24px; font-weight: 600; color: #2d3748; margin: 10px 0;">
-          #{location[:name]}
-        </div>
-        <div class="location-meta">
-          #{location[:visit_count]} visits
-        </div>
-      </div>
-    HTML
-  end
+  def self.calendar_html(daily_summaries)
+    return '<p class="empty-day">No location data available</p>' if daily_summaries.empty?
 
-  def self.locations_html(locations)
-    return '<p style="color: #718096;">No locations recorded during this period.</p>' if locations.empty?
-
-    locations.map do |location|
+    # Reverse to show most recent first
+    daily_summaries.reverse.map do |day|
       <<~HTML
-        <div class="location-item">
-          <div class="location-name">#{location[:name]}</div>
-          <div class="location-meta">
-            #{location[:visit_count]} visits •
-            #{location[:first_seen].strftime('%I:%M %p')} - #{location[:last_seen].strftime('%I:%M %p')}
+        <div class="day-card">
+          <div class="day-header">
+            <div class="day-date">#{format_day_date(day[:date])}</div>
+            <div class="day-count">#{day[:visit_count]} points</div>
+          </div>
+          <div class="day-locations">
+            #{format_locations(day[:locations])}
           </div>
         </div>
       HTML
     end.join("\n")
+  end
+
+  def self.format_day_date(date)
+    today = Date.today
+    yesterday = today - 1
+
+    if date == today
+      "Today - #{date.strftime('%B %d')}"
+    elsif date == yesterday
+      "Yesterday - #{date.strftime('%B %d')}"
+    else
+      date.strftime('%A, %B %d')
+    end
+  end
+
+  def self.format_locations(locations)
+    if locations.empty?
+      '<span class="empty-day">No location data</span>'
+    else
+      locations.map do |location|
+        "<span class=\"location-item\">#{location}</span>"
+      end.join(' • ')
+    end
   end
 end
